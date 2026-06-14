@@ -1,0 +1,87 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "robotshop.fullname" . }}-fe
+  namespace: robotshop
+  labels:
+    {{- include "robotshop.labels" . | nindent 4 }}
+    app.kubernetes.io/component: fe
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "robotshop.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: fe
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "robotshop.labels" . | nindent 8 }}
+        app.kubernetes.io/component: fe
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "robotshop.serviceAccountName" . }}
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: {{ .Chart.Name }}
+          {{- with .Values.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          image: "{{ .Values.fe_image.repository }}:{{ .Values.fe_image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.fe_image.pullPolicy }}
+          env:
+            - name: CATALOGUE_HOST
+              value: {{ .Values.fe_env.catalogueHost | quote }}
+            - name: USER_HOST
+              value: {{ .Values.fe_env.userHost | quote }}
+            - name: CART_HOST
+              value: {{ .Values.fe_env.cartHost | quote }}
+            - name: SHIPPING_HOST
+              value: {{ .Values.fe_env.shippingHost | quote }}
+            - name: PAYMENT_HOST
+              value: {{ .Values.fe_env.paymentHost | quote }}
+            - name: RATINGS_HOST
+              value: {{ .Values.fe_env.ratingsHost | quote }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.fe_service.port }}
+              protocol: TCP
+          {{- with .Values.fe_probe.livenessProbe }}
+          livenessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.fe_probe.readinessProbe }}
+          readinessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

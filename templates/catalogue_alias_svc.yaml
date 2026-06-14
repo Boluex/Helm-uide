@@ -1,0 +1,12 @@
+# This ExternalName service allows the rs-web nginx config (which hardcodes
+# the upstream hostname as "catalogue") to resolve to the robotshop-be service.
+apiVersion: v1
+kind: Service
+metadata:
+  name: catalogue
+  namespace: robotshop
+  labels:
+    {{- include "robotshop.labels" . | nindent 4 }}
+spec:
+  type: ExternalName
+  externalName: {{ include "robotshop.fullname" . }}-be.robotshop.svc.cluster.local

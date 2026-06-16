@@ -1,0 +1,21 @@
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: robotshop-be
+  namespace: robotshop
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: robotshop-be
+  minReplicaCount: 1
+  maxReplicaCount: 10
+  triggers:
+  - type: cpu
+    metricType: Utilization
+    metadata:
+      value: "80"
+  - type: memory
+    metricType: Utilization
+    metadata:
+      value: "80"

@@ -119,6 +119,14 @@ resources:
     cpu: 100m
     memory: 128Mi
 
+db_resources:
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+  requests:
+    cpu: 200m
+    memory: 512Mi
+
 # This is to setup the liveness and readiness probes more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
 fe_probe:
   livenessProbe:
@@ -158,7 +166,7 @@ db_probe:
             - "db.adminCommand('ping')"
           initialDelaySeconds: 30
           periodSeconds: 10
-          timeoutSeconds: 5
+          timeoutSeconds: 15
         # Readiness: Prevents traffic from routing to the container until it is ready
    readinessProbe:
           exec:
@@ -168,7 +176,7 @@ db_probe:
             - "db.adminCommand('ping')"
           initialDelaySeconds: 15
           periodSeconds: 10
-          timeoutSeconds: 5
+          timeoutSeconds: 15
 
 
 

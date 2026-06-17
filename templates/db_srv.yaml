@@ -11,9 +11,9 @@ spec:
   clusterIP: None
   ports:
     - port: {{ .Values.db_service.port }}
-      targetPort: http
+      targetPort: tcp
       protocol: TCP
-      name: http
+      name: tcp
   selector:
     {{- include "robotshop.selectorLabels" . | nindent 4 }}
     app.kubernetes.io/component: db

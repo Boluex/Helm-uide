@@ -280,7 +280,67 @@ graph LR
 
 ---
 
-## 5. Useful Minikube CLI Utilities
+## 5. Installing Prometheus & Grafana (kube-prometheus-stack)
+
+To monitor your Kubernetes cluster and applications, you can install the **kube-prometheus-stack**, which bundles Prometheus, Grafana, Alertmanager, and node exporters.
+
+```bash
+# Add the prometheus-community Helm repository
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+helm repo update
+
+# Install kube-prometheus-stack in the monitoring namespace
+helm install prom prometheus-community/kube-prometheus-stack \
+  --namespace monitoring \
+  --create-namespace
+```
+
+---
+
+## 6. ServiceMonitor vs. PodMonitor
+
+In a Prometheus Operator environment, you define scrape targets declaratively using custom resources:
+
+| Feature | ServiceMonitor | PodMonitor |
+| :--- | :--- | :--- |
+| **Target** | Kubernetes **Service** | Kubernetes **Pod** directly |
+| **How it works** | Prometheus finds the Service, gets the endpoints backing it, and scrapes those endpoints. | Prometheus queries the API server for Pods directly and scrapes their IPs. |
+| **Common Use Case** | Scraping standard application metrics (e.g., `/metrics` on port 8080) for services exposed via a Service. | Scraping endpoints not exposed by a service, daemonsets, or sidecars (like Envoy/Istio proxies). |
+| **Istio Scraping** | Not ideal since standard services point to the app port, not Envoy's telemetry port. | **Ideal** because we can match Pods with the Istio label and scrape Envoy's port (`15090`) directly. |
+
+---
+
+## 7. Troubleshooting Case Studies & Fixes
+
+During the deployment of the `robotshop` application under the Istio service mesh, we encountered and resolved three common cluster issues:
+
+### Case A: MongoDB OOM Crashing (Out Of Memory)
+* **Problem**: The MongoDB pod (`robotshop-db-0`) was stuck in `CrashLoopBackOff` with `exitCode: 137` (`OOMKilled`). It was constrained by the global Helm resource limit (256Mi memory limit), which is insufficient for MongoDB (especially when launching `mongosh` for probes).
+* **Solution**:
+  1. Updated the StatefulSet template to support a custom `db_resources` block falling back to global resources.
+  2. Defined a higher resource limit in `values.yaml` specifically for the database:
+     ```yaml
+     db_resources:
+       limits:
+         cpu: 1000m
+         memory: 1Gi
+       requests:
+         cpu: 200m
+         memory: 512Mi
+     ```
+
+### Case B: Database Probe Command Timeout
+* **Problem**: The database container's liveness and readiness probes were timing out after 5 seconds (`mongosh --eval db.adminCommand('ping')`). In resource-constrained minikube environments, spinning up Node.js-based `mongosh` takes longer than 5 seconds.
+* **Solution**: Increased the `timeoutSeconds` for the database liveness and readiness probes from `5` to `15` in `values.yaml`.
+
+### Case C: MongoDB Protocol Mismatch (Istio Port Naming Gotcha)
+* **Problem**: The backend service failed to connect to MongoDB, throwing `MongoNetworkError: Invalid message size: 1347703880` (which translates to `POST` in ASCII).
+* **Root Cause**: The MongoDB port and service port in the Helm templates were named `http`. Under the Istio Service Mesh, Istio automatically intercepts any port named `http` and parses it as HTTP/1.1 or HTTP/2. Because MongoDB uses a binary wire protocol, Envoy tried to parse it as HTTP headers, failed, and returned an HTTP 400 Bad Request. The Mongo driver received the letters `H T T P` and parsed them as a packet size of 1.3GB, causing it to crash.
+* **Solution**: Renamed the port name from `http` to `tcp` in both `db_depl.yaml` and `db_srv.yaml`. This tells Istio to route the traffic as raw, unparsed TCP data, allowing the database connection to succeed.
+
+---
+
+## 8. Useful Minikube CLI Utilities
 
 *   `minikube ip`: Returns the IP address of the Minikube node. You use this IP to access services exposed via `NodePort`.
 *   `minikube tunnel`: Creates a network route on your host machine to make `LoadBalancer` services and Ingress routes accessible from your host web browser (e.g., visiting `http://robotshop.local`).

@@ -1,0 +1,19 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: {{ include "robotshop.fullname" . }}-istio-monitor
+  namespace: robotshop
+  labels:
+    release: prom
+    {{- include "robotshop.labels" . | nindent 4 }}
+spec:
+  namespaceSelector:
+    matchNames:
+    - robotshop
+  selector:
+    matchLabels:
+      security.istio.io/tlsMode: istio
+  podMetricsEndpoints:
+  - port: http-envoy-prom
+    path: /stats/prometheus
+    interval: 15s

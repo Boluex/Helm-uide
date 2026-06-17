@@ -45,7 +45,7 @@ spec:
           image: "{{ .Values.db_image.repository }}:{{ .Values.db_image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.db_image.pullPolicy }}
           ports:
-            - name: http
+            - name: tcp
               containerPort: {{ .Values.db_service.port }}
               protocol: TCP
           {{- with .Values.db_probe.livenessProbe }}
